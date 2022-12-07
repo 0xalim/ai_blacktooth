@@ -72,4 +72,40 @@ Examples:
 ## Security Analysis of BL BR/EDR
 
 Controller sec:
-	1. 
+	1. Auth remote device
+	2. Ensure communication confidentiality
+
+Host sec:
+	1. Identify class of device
+	2. Restrict device capabilities
+
+### Vulnerabilities
+
+* Unfixed roles:
+	- Protocol does not define binding rules
+	- If attacker pages before the other, then it assumes M role
+	- Now bl device (headset) can send commands, strokes (hid), to S
+
+* Unilateral legacy auth:
+	- Legacy auth is the only required auth protocol, not sec auth
+	- If attacker is M then no auth is required for them, only S
+	- Downgrade from sec auth to legacy auth possible by impersonating that the
+	  functionality is not supported
+
+* Low encryption key entropy:
+	- Real key used to encrypt is derivation of key[link+pparams] via reduction
+	  of entropy to N bytes
+	- N is result from bl enc key negotiation protocol
+	- Attacker impersonates; forces low entropy; bruteforce low entropy key
+
+* Inconsistent profile authentication procedure
+	 - bl protocol has terrible profile authentication
+	 - No alerts are shown about profile changes
+	 - Attacker can force hid even on headsets
+
+* Default profile services authorization
+	- All perms granted to arbitrary number of profile requests
+	- Headsets allowed to add hid; all perms granted
+	- Allows for easy priv esc
+
+## Blacktooth Attack
