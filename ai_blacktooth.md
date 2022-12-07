@@ -109,3 +109,34 @@ Host sec:
 	- Allows for easy priv esc
 
 ## Blacktooth Attack
+
+1. Attacker changes BD\_ADDR to S BD\_ADDR
+2. Attacker sends request over bl BR/EDR to pair
+3. Attacker forces downgrade to legacy auth
+4. Attacker forces low entropy for key, and start bruteforcing for it
+5. Attacker connects to sensitive profiles, sends keystrokes via hid profile
+
+### Identity forging and proactive connection request
+
+Forge identity by:
+	- Chanigng name of attacker device to S device
+	- Grab S BD\_ADDR via eavesdropping or exploit inquiry procedure
+
+Proactive connection request:
+	- Abuse ability to be M via first request
+	- Headsets do this to auto reconnect; headset is M first, then changes to S
+	-  Attacker impersonates & sends request first granting them M role
+
+### Authentication spoofing
+
+Auth methods:
+	1. Secure aut: only used if both devices have it
+	2. Legcay auth
+
+Legacy auth:
+	1. Verifier gens AU\_RAND
+	2. Claimant receives, gens SRES = H(Kl, AU\_RAND, BD\_ADDR)
+	3. Verifier gens SRES; if equal then Kl should be same
+
+Problems:
+	1. 
