@@ -130,8 +130,8 @@ Proactive connection request:
 ### Authentication spoofing
 
 Auth methods:
-	1. Secure aut: only used if both devices have it
-	2. Legcay auth
+	1. Secure auth: only used if both devices have it
+	2. Legacy auth
 
 Legacy auth:
 	1. Verifier gens AU\_RAND
@@ -139,4 +139,25 @@ Legacy auth:
 	3. Verifier gens SRES; if equal then Kl should be same
 
 Problems:
-	1. 
+	1. Verifier does not have to be M
+	2. Unilateral auth, only one needs to auth (S)
+	3. Devices paired using sec auth do not need to continue using sec auth
+	4. Possible to downgrade & force legacy auth
+
+### Encryption Key Negotiation & Brute Force
+
+Enc methods:
+	1. Secure auth key enc
+	2. Everything before secure auth
+
+Kc generated from:
+	1. AU\_RAND
+	2. BD\_ADDR
+	3. Kl[shared link key]
+	4. Used to:
+		- Derive actual key used to encrypt -> Kc~
+		- Kc~ entropy level between 1,16 bytes
+		- Meaning possible to gen 1 byte entropy
+
+* Key negotiation process implemented in bl controller
+	- victim won't notice anything 
