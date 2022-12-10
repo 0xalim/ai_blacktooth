@@ -1,3 +1,10 @@
+## Goal
+
+* Understand process of attack
+* Understand vulnerabilities outlined
+* Gain deep understanding of how tools used here work
+* Replicate attack using Arduino/Raspberry Pi/Android
+
 ## Overview
 
 Bl tech [bl special interest group]:
@@ -67,7 +74,9 @@ Problems:
 Examples:
 	1. A2DP for audio
 	2. HID for keystrokes
-	3. PBAP for contacts	
+	3. PBAP for contacts; MAP for messages
+	4. AVRCP for audio/video remote control
+	5. OPP for file transfer
 
 ## Security Analysis of BL BR/EDR
 
@@ -160,4 +169,102 @@ Kc generated from:
 		- Meaning possible to gen 1 byte entropy
 
 * Key negotiation process implemented in bl controller
-	- victim won't notice anything 
+	- Victim won't notice anything 
+
+### Profile Change
+
+* Addition of profiles:
+	1. M asks S to add new profile
+	2. S accepts due to bad bl spec
+	3. Mobile OS accepts this change without user confirmation
+
+* Consequence is essentially arbitrary code exec due to ability to upload any
+  profile and access all content.
+
+* Attacker cannot read whatever file they want due to that profile requiring
+  confirmation from S. But, HID profile allows keystrokes anyways
+
+* Important distinction is that blacktooth does not require pre-installed agents
+  on the S device; all this works due to bl spec being terrible
+
+### MITM Blacktooth Variation
+
+* MITM Flow:
+	1. Attacker M on two instances; M -> a + M -> b
+	2. Share Kl with a & b; not both instances of M
+	3. Both instances of M are connected somehow[http?]
+	4. M gathers BD\_ADDR & features of a & b
+	5. M shares info to opposite device
+	6. M initiates auth for both a & b; share auth msg to opposite device
+	7. Force small entropy keys for a & b
+	8. Bruteforce Kc~
+	9. Establish profiles for communicating between both:
+
+* KNOB: Force use of small entropy key
+	- [https://github.com/francozappa/knob](Antonioli francozappa/knob)
+	- [https://francozappa.github.io/project/knob/](Antonioli vid+exp)
+
+## Implementation & Evaluation
+
+### Attack Implementation
+
+1. Info gathering:
+	- Hcidump: get BD\_ADDR, device name, class of device, other att[??] dump
+	  to BTSnoop file.
+	- Use wireshark to gather info above
+	- Change attacker BD\_ADDR to a; send/receive connection to b
+	- Niche case 1: some bl device won't respond after being paired but it sends
+	  requests to paired device frequently, so if we change to its bd\_addr then
+	  we receive its requests and can gather info
+	- Niche case 2: sniff bl packets during connection attempt[really expensive]
+2. Identity forging & proactive connection request:
+	- Use BIAS to create & import impersonation file containing collected data;
+	  internalblue used to patch cyw board
+	- Scan for victim & send connection request using blctl; M goes to attacker
+3. Authentication spoofing:
+	- Downgrade to legacy auth via BIAS + internalblue config saying sec auth
+	  not supported
+	- Configure attack file to:
+		- include rom & ram addresses to be patched
+		- flag to downgrade sec auth -> legacy auth
+		- skip process of verification
+4. Encryption key negotiation and brute force:
+	- Convice S to set low enc key with low entropy
+	- Take l2cap header as oracle[??]
+	- Modify cyw board to set lmax and lmin for short key length
+	- Attacker computes all possible Kc~ and select according to oracle
+	- Reverse engineer where key is stored in RAM attacker side, and place
+	  the key there via internalblue
+5. Profile change:
+	- Implement same profile as device impersonating
+	- Use open source[??] to add profiles & complete attackers tasks
+
+## Discussion
+
+### Discoverable & Connectable State
+
+* Victim must be in discoverable & connectable state for attacker to send a con
+  request
+
+* Mainstream os's (android, ios, windows, macos) don't have option to turn off
+  discoverable but only completely turn off bluetooth
+
+### Profile Change in Linux and Windows
+
+1. Trying to change profile in linux causes connection to be blocked due to
+   l2cap\_cr\_sec\_block flag; also sends a security block packet; if a was the
+   M instead then profile change would go through
+2. Trying to change profile in windows causes PSM not supported packet; a can't
+   change profile themselves if M unlike linux
+
+### Defense Against Blacktooth
+
+1. Always ask for user confirmation when connecting to a new bl device;
+   functionality implemented in bl host os
+2. If sec auth not supported, then legacy auth should force mutual auth instead
+   of unilateral auth; meaning both devices have to provide auth not only the S;
+   if devices have previously used sec auth then never allow downgrade;
+   functionality implemented in bl host os
+3. Force entropy of enc keys to be >16B
+4. Monitor profile lists, never give full perms to new profiles, notify user
+   when new profile is added; functionality implemented in bl host os
